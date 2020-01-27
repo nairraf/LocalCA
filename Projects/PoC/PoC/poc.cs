@@ -28,7 +28,7 @@ namespace PoC
 
             X509Store store = new X509Store(StoreLocation.LocalMachine);
             store.Open(OpenFlags.MaxAllowed);
-            X509Certificate2Collection cers = store.Certificates.Find(X509FindType.FindBySubjectName, "test.millercom.net", false);
+            X509Certificate2Collection cers = store.Certificates.Find(X509FindType.FindBySubjectName, "*.millercom.net", false);
             X509Certificate2 cer;
             RsaPrivateCrtKeyParameters r;
             if (cers.Count > 0)

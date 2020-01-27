@@ -1,0 +1,52 @@
+Convert a CNG key to a CSP key. Export the certificate to a PFX. then:
+
+openssl pkcs12 -in <pathTo.pfx> -out <somefile>.pem
+openssl pkcs12 -export -in <somefile>.pem -out <aNewPfx>.pfx
+
+Self-Signed PowerShell CA Commands:
+----------Create Root CA:
+$params = @{
+	DnsName = "Test Root CA"
+	Subject = "CN=Test Root CA, O=Test Lab, C=CA
+	KeyLength = 2048
+	KeyAlgorithm = "RSA"
+	HashAlgorithm = "SHA256"
+	KeyExportPolicy = "Exportable"
+	NotAfter = (Get-Date).AddYears(10)
+	CertStoreLocation = "Cert:\LocalMachine\My"
+	KeyUsage = "CertSign","CRLSign"
+}
+New-SelfSignedCertificate @params
+
+-------------Create a new cert signed by the new root:
+---- Get the new root Certificate:
+$rootCert = Get-ChildItem | where  { $_.Subject -eq "CN=Test Root CA" }
+
+---- Create the new cert signed by the root:
+$params = @{
+	DnsName = "*.testserver.net","san1","san2"
+	Subject = "CN=Some Name, O=Some Org, C=CA"
+	Signer = $rootCert
+	KeyLength = 2048
+	KeyAlgorithm = "RSA"
+	HashAlgorithm = "SHA256"
+	KeyExportPolicy = "Exportable"
+	NotAfter = (Get-date).AddYears(2)
+	CertStoreLocation = "Cert:\LocalMachine\My"
+}
+New-SelfSignedCertificate @params
+
+
+
+Self-Signed stand-alone cert
+$params = @{
+	DnsName = "*.testserver.net","san1","san2"
+	Subject = "CN=*.testserver.net, O=Some Org, C=CA"
+	KeyLength = 2048
+	KeyAlgorithm = "RSA"
+	HashAlgorithm = "SHA256"
+	KeyExportPolicy = "Exportable"
+	NotAfter = (Get-date).AddYears(2)
+	CertStoreLocation = "Cert:\LocalMachine\My"
+}
+New-SelfSignedCertificate @params
