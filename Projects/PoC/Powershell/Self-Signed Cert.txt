@@ -1,10 +1,58 @@
-Convert a CNG key to a CSP key. Export the certificate to a PFX. then:
+----------------------------------
+Use OpenSSL to create a simple CA:
+
+## Generate the CA private key
+openssl genrsa -des3 -out localCA.key 2048
+
+## Generate the CA public certificate
+openssl req -x509 -new -nodes -key localCA.key -sha256 -days 3650 -out localCA.pem
+
+## Generate an private key and a new CSR
+openssl genrsa -out <url>.key 2048
+openssl req -new -key <url>.key -out <url>.csr -subj "/CN=<URL>" 
+
+## sign the CSR to create the certificate (no SAN)
+openssl x509 -req -in <url>.csr -CA localCA.pem -CAkey localCA.key -CAcreateserial -out <url>.crt -days 730 -sha256
+
+if you require SAN. Before signing, create a text file with:
+-------------------------------------------------
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = <url1>
+DNS.2 = <ulr2>
+-------------------------------------------------
+
+and then save as 'san.ext' sign with:
+openssl x509 -req -in <url>.csr -CA localCA.pem -CAkey localCA.key -CAcreateserial -out <url>.crt -days 730 -sha256 -extfile san.ext
+
+## package the SSL key and cert in a PFX
+openssl pkcs12 -inkey <url>.key -in <url>.crt -export -out <url>.pfx
+
+
+-------------------------------------------------------------------------------------
+Use openssl to create a Self-Signed RSA key pair and be imported as a CSP certificate:
+## Generate Private Key and public cert:
+openssl req -newkey rsa:2048 -keyout key.pem -x509 -days 365 -out certificate.pem -subj "/CN=somename"
+
+## Review Details of the newly created cert:
+openssl x509 -text -noout -in certificate.pem
+
+## Combine into a pfx archive:
+openssl pkcs12 -inkey key.pem -in certificate.pem -export -out cert.pfx
+
+-------------------------------------------------------------------------------------
+Use OpenSSL to convert a CNG key to a CSP key. Export the certificate to a PFX. then:
 
 openssl pkcs12 -in <pathTo.pfx> -out <somefile>.pem
 openssl pkcs12 -export -in <somefile>.pem -out <aNewPfx>.pfx
 
+----------------------------------
 Self-Signed PowerShell CA Commands:
-----------Create Root CA:
+## Create Root CA:
 $params = @{
 	DnsName = "Test Root CA"
 	Subject = "CN=Test Root CA, O=Test Lab, C=CA
@@ -18,11 +66,11 @@ $params = @{
 }
 New-SelfSignedCertificate @params
 
--------------Create a new cert signed by the new root:
----- Get the new root Certificate:
+## Create a new cert signed by the new root:
+### Get the new root Certificate:
 $rootCert = Get-ChildItem | where  { $_.Subject -eq "CN=Test Root CA" }
 
----- Create the new cert signed by the root:
+### Create the new cert signed by the root:
 $params = @{
 	DnsName = "*.testserver.net","san1","san2"
 	Subject = "CN=Some Name, O=Some Org, C=CA"
